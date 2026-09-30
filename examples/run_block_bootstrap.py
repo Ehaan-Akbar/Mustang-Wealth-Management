@@ -1,7 +1,7 @@
-
 """
-Example: connect the block bootstrap to the existing
-Mustang Wealth Management Black-Litterman workflow.
+Run the block-bootstrap simulation using
+the existing Mustang Wealth Management
+Black-Litterman workflow.
 """
 
 from black_litterman import (
@@ -19,7 +19,15 @@ from black_litterman.block_bootstrap import (
 )
 
 
-TICKERS = ["AAPL", "MSFT", "GOOGL", "AMZN", "JPM", "XOM"]
+TICKERS = [
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "JPM",
+    "XOM",
+]
+
 
 MARKET_CAPS = {
     "AAPL": 3400,
@@ -32,23 +40,48 @@ MARKET_CAPS = {
 
 
 def main():
-    # Use the SAME historical period/data philosophy as your BL model.
+
+    # ---------------------------------------------------------
+    # 1. Download historical prices
+    # ---------------------------------------------------------
+
     prices = download_prices(
         TICKERS,
         start="2018-01-01",
     )
 
-    # IMPORTANT:
-    # Use simple returns for the wealth simulation.
+
+    # ---------------------------------------------------------
+    # 2. Convert prices to SIMPLE daily returns
+    # ---------------------------------------------------------
+
     returns = compute_returns(
         prices,
         method="simple",
     )
 
-    # BL still uses your existing covariance calculation.
-    cov_matrix = compute_covariance(returns)
 
-    market_weights = market_cap_weights(MARKET_CAPS)
+    # ---------------------------------------------------------
+    # 3. Calculate covariance for Black-Litterman
+    # ---------------------------------------------------------
+
+    cov_matrix = compute_covariance(
+        returns
+    )
+
+
+    # ---------------------------------------------------------
+    # 4. Market-cap weights
+    # ---------------------------------------------------------
+
+    market_weights = market_cap_weights(
+        MARKET_CAPS
+    )
+
+
+    # ---------------------------------------------------------
+    # 5. Build your existing Black-Litterman model
+    # ---------------------------------------------------------
 
     bl = BlackLittermanModel(
         cov_matrix=cov_matrix,
@@ -57,12 +90,45 @@ def main():
         tau=0.05,
     )
 
-    # Keep your team's existing views here.
-    # Example only:
-    # bl.add_absolute_view("AAPL", expected_return=0.10, confidence=0.60)
-    # bl.add_relative_view("JPM", "XOM", expected_return=0.04, confidence=0.40)
 
-    posterior_returns, posterior_cov = bl.posterior()
+    # ---------------------------------------------------------
+    # IMPORTANT:
+    #
+    # Put the SAME investment views that your team
+    # already uses in your existing Black-Litterman model.
+    #
+    # Example:
+    #
+    # bl.add_absolute_view(
+    #     "AAPL",
+    #     expected_return=0.10,
+    #     confidence=0.60
+    # )
+    #
+    # bl.add_relative_view(
+    #     "JPM",
+    #     "XOM",
+    #     expected_return=0.04,
+    #     confidence=0.40
+    # )
+    #
+    # DO NOT copy these examples unless they are
+    # actually your team's views.
+    # ---------------------------------------------------------
+
+
+    # ---------------------------------------------------------
+    # 6. Get Black-Litterman posterior returns/covariance
+    # ---------------------------------------------------------
+
+    posterior_returns, posterior_cov = (
+        bl.posterior()
+    )
+
+
+    # ---------------------------------------------------------
+    # 7. Run your existing portfolio optimizer
+    # ---------------------------------------------------------
 
     optimizer = MeanVarianceOptimizer(
         expected_returns=posterior_returns,
@@ -71,33 +137,102 @@ def main():
         allow_short=False,
     )
 
-    max_sharpe_weights = optimizer.max_sharpe()
-    min_vol_weights = optimizer.min_volatility()
 
-    portfolios = {
-        "BL Max Sharpe": max_sharpe_weights,
-        "BL Min Volatility": min_vol_weights,
-    }
+    # ---------------------------------------------------------
+    # 8. Get Max Sharpe and Minimum Volatility portfolios
+    # ---------------------------------------------------------
 
-    results_table, results = compare_portfolios(
-        returns=returns,
-        portfolios=portfolios,
-        n_sims=10_000,
-        block_size=21,   # about one trading month
-        seed=42,
+    max_sharpe_weights = (
+        optimizer.max_sharpe()
     )
 
-    print("\n=== Block Bootstrap Results ===")
-    print(results_table.round(4))
+    min_vol_weights = (
+        optimizer.min_volatility()
+    )
 
-    print("\n=== Portfolio Weights ===")
-    print(max_sharpe_weights.round(4))
-    print(min_vol_weights.round(4))
+
+    # ---------------------------------------------------------
+    # 9. Put portfolios into a dictionary
+    # ---------------------------------------------------------
+
+    portfolios = {
+
+        "BL Max Sharpe":
+            max_sharpe_weights,
+
+        "BL Min Volatility":
+            min_vol_weights,
+    }
+
+
+    # ---------------------------------------------------------
+    # 10. Run Block Bootstrap
+    # ---------------------------------------------------------
+
+    results_table, results = (
+        compare_portfolios(
+
+            returns=returns,
+
+            portfolios=portfolios,
+
+            n_sims=10_000,
+
+            block_size=21,
+
+            batch_size=250,
+
+            seed=42,
+        )
+    )
+
+
+    # ---------------------------------------------------------
+    # 11. Display results
+    # ---------------------------------------------------------
+
+    print(
+        "\n=== BLOCK BOOTSTRAP RESULTS ==="
+    )
+
+    print(
+        results_table.round(4)
+    )
+
+
+    # ---------------------------------------------------------
+    # 12. Display portfolio weights
+    # ---------------------------------------------------------
+
+    print(
+        "\n=== BL MAX SHARPE WEIGHTS ==="
+    )
+
+    print(
+        max_sharpe_weights.round(4)
+    )
+
+
+    print(
+        "\n=== BL MINIMUM VOLATILITY WEIGHTS ==="
+    )
+
+    print(
+        min_vol_weights.round(4)
+    )
+
+
+    # ---------------------------------------------------------
+    # 13. Plot the 2033 distribution
+    # ---------------------------------------------------------
 
     plot_2033_distribution(
-        results["BL Max Sharpe"]
+        results[
+            "BL Max Sharpe"
+        ]
     )
 
 
 if __name__ == "__main__":
+
     main()
