@@ -1,28 +1,18 @@
-
 """
-Block-bootstrap simulation
+Block-bootstrap simulation for the Mustang Wealth Management project.
 
-Inputs:
-    - historical asset returns from black_litterman.data_utils.compute_returns()
-    - a portfolio weight Series from MeanVarianceOptimizer.max_sharpe()
-      or MeanVarianceOptimizer.min_volatility()
+This simulation:
+    - Uses historical daily SIMPLE returns
+    - Resamples consecutive blocks of historical returns
+    - Preserves cross-asset relationships within each block
+    - Simulates Laura's portfolio from 2027 through 2042
+    - Applies the required cash flows:
+        2027: +$300,000
+        2028: +$150,000
+        2033-2042: -$50,000 each year
+    - Calculates the probability of successfully funding all required payments
 
-Recommended:
-    Use SIMPLE daily returns for wealth simulation:
-        returns = compute_returns(prices, method="simple")
-
-The simulation:
-    1. Resamples historical daily return blocks jointly across all assets.
-    2. Preserves cross-asset relationships within each sampled block.
-    3. Simulates 2027-2042.
-    4. Applies Laura's cash flows at the beginning of each year:
-           2027: +$300,000
-           2028: +$150,000
-           2033-2042: -$50,000/year
-    5. Reports the probability of funding all required payments.
-
-This is the first-stage fixed-weight simulation. The dynamic glide path
-can be added after this baseline is validated.
+This version processes simulations in batches to reduce memory usage.
 """
 
 from __future__ import annotations
@@ -32,7 +22,6 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 
 START_YEAR = 2027
@@ -41,7 +30,10 @@ TRADING_DAYS_PER_YEAR = 252
 
 
 def laura_cash_flows() -> Dict[int, float]:
-    """Beginning-of-year cash flows from the case."""
+    """
+    Beginning-of-year cash flows from Laura's case.
+    """
+
     flows = {
         2027: 300_000.0,
         2028: 150_000.0,
@@ -57,45 +49,80 @@ def _validate_returns_and_weights(
     returns: pd.DataFrame,
     weights: pd.Series,
 ) -> Tuple[pd.DataFrame, pd.Series]:
-    """Validate and align historical returns and portfolio weights."""
+    """
+    Validate and align historical returns and portfolio weights.
+    """
 
     if not isinstance(returns, pd.DataFrame) or returns.empty:
-        raise ValueError("returns must be a non-empty pandas DataFrame.")
-
-    if not isinstance(weights, pd.Series):
-        weights = pd.Series(weights, index=returns.columns)
-
-    returns = returns.copy()
-    weights = weights.copy()
-
-    # Keep only numeric return columns.
-    returns = returns.select_dtypes(include=[np.number])
-
-    if returns.empty:
-        raise ValueError("returns must contain numeric asset-return columns.")
-
-    missing = [ticker for ticker in returns.columns if ticker not in weights.index]
-    if missing:
-        raise ValueError(f"weights are missing assets: {missing}")
-
-    weights = weights.reindex(returns.columns).astype(float)
-
-    if weights.isna().any():
-        raise ValueError("weights contain missing values.")
-
-    if not np.all(np.isfinite(weights.values)):
-        raise ValueError("weights contain NaN or infinite values.")
-
-    if not np.isclose(weights.sum(), 1.0, atol=1e-6):
         raise ValueError(
-            f"weights must sum to 1. Current sum = {weights.sum():.6f}"
+            "returns must be a non-empty pandas DataFrame."
         )
 
-    returns = returns.replace([np.inf, -np.inf], np.nan).dropna()
+    returns = returns.select_dtypes(
+        include=[np.number]
+    ).copy()
 
-    if len(returns) < 2 * TRADING_DAYS_PER_YEAR:
+    if returns.empty:
         raise ValueError(
-            "At least 2 years of historical observations are recommended."
+            "returns must contain numeric asset-return columns."
+        )
+
+    if not isinstance(weights, pd.Series):
+        weights = pd.Series(
+            weights,
+            index=returns.columns
+        )
+    else:
+        weights = weights.copy()
+
+    missing = [
+        asset
+        for asset in returns.columns
+        if asset not in weights.index
+    ]
+
+    if missing:
+        raise ValueError(
+            f"weights are missing assets: {missing}"
+        )
+
+    weights = weights.reindex(
+        returns.columns
+    ).astype(float)
+
+    if weights.isna().any():
+        raise ValueError(
+            "weights contain missing values."
+        )
+
+    if not np.all(
+        np.isfinite(weights.values)
+    ):
+        raise ValueError(
+            "weights contain NaN or infinite values."
+        )
+
+    if not np.isclose(
+        weights.sum(),
+        1.0,
+        atol=1e-6
+    ):
+        raise ValueError(
+            f"weights must sum to 1. "
+            f"Current sum = {weights.sum():.6f}"
+        )
+
+    returns = returns.replace(
+        [np.inf, -np.inf],
+        np.nan
+    ).dropna()
+
+    if len(returns) < (
+        2 * TRADING_DAYS_PER_YEAR
+    ):
+        raise ValueError(
+            "At least two years of historical observations "
+            "are recommended."
         )
 
     if not returns.index.is_monotonic_increasing:
@@ -111,69 +138,160 @@ def block_bootstrap(
     block_size: int = 21,
     trading_days_per_year: int = TRADING_DAYS_PER_YEAR,
     seed: int = 42,
-) -> np.ndarray:
+    batch_size: int = 250,
+):
     """
-    Generate bootstrapped daily asset returns.
+    Generate block-bootstrap daily portfolio return paths in batches.
 
-    Uses a moving block bootstrap. Each block contains consecutive historical
-    observations, and all assets are sampled together so their historical
-    cross-asset relationships are retained.
+    Parameters
+    ----------
+    returns:
+        Historical SIMPLE daily asset returns.
 
-    block_size=21 is approximately one trading month.
+    n_sims:
+        Number of simulations.
+
+    n_years:
+        Number of years to simulate.
+
+    block_size:
+        Number of consecutive trading days in each block.
+        21 is approximately one trading month.
+
+    trading_days_per_year:
+        Number of trading days per year.
+
+    seed:
+        Random seed for reproducibility.
+
+    batch_size:
+        Number of simulation paths generated at once.
     """
+
     if n_sims <= 0:
-        raise ValueError("n_sims must be positive.")
-    if n_years <= 0:
-        raise ValueError("n_years must be positive.")
-    if block_size <= 0:
-        raise ValueError("block_size must be positive.")
+        raise ValueError(
+            "n_sims must be positive."
+        )
 
-    X = returns.to_numpy(dtype=float)
-    n_obs, n_assets = X.shape
+    if n_years <= 0:
+        raise ValueError(
+            "n_years must be positive."
+        )
+
+    if block_size <= 0:
+        raise ValueError(
+            "block_size must be positive."
+        )
+
+    if batch_size <= 0:
+        raise ValueError(
+            "batch_size must be positive."
+        )
+
+    X = returns.to_numpy(
+        dtype=np.float32
+    )
+
+    n_obs = X.shape[0]
 
     if block_size > n_obs:
-        raise ValueError("block_size cannot exceed the number of observations.")
+        raise ValueError(
+            "block_size cannot exceed the number "
+            "of historical observations."
+        )
 
-    n_days = n_years * trading_days_per_year
-    n_blocks = int(np.ceil(n_days / block_size))
-
-    # Circular moving blocks let blocks wrap around the historical sample.
-    rng = np.random.default_rng(seed)
-    start_indices = rng.integers(
-        0, n_obs, size=(n_sims, n_blocks), endpoint=False
+    n_days = (
+        n_years *
+        trading_days_per_year
     )
 
-    simulated = np.empty(
-        (n_sims, n_blocks * block_size, n_assets),
-        dtype=np.float32,
+    n_blocks = int(
+        np.ceil(
+            n_days / block_size
+        )
     )
 
-    for b in range(n_blocks):
-        starts = start_indices[:, b]
+    rng = np.random.default_rng(
+        seed
+    )
 
-        # Build each block with wrap-around.
-        block_indices = (
-            starts[:, None] + np.arange(block_size)[None, :]
-        ) % n_obs
+    for start in range(
+        0,
+        n_sims,
+        batch_size
+    ):
 
-        simulated[
+        current_batch = min(
+            batch_size,
+            n_sims - start
+        )
+
+        start_indices = rng.integers(
+            0,
+            n_obs,
+            size=(
+                current_batch,
+                n_blocks
+            ),
+        )
+
+        simulated = np.empty(
+            (
+                current_batch,
+                n_blocks * block_size,
+                X.shape[1],
+            ),
+            dtype=np.float32,
+        )
+
+        for block_index in range(
+            n_blocks
+        ):
+
+            indices = (
+                start_indices[
+                    :,
+                    block_index,
+                    None
+                ]
+                +
+                np.arange(
+                    block_size
+                )[None, :]
+            ) % n_obs
+
+            simulated[
+                :,
+                block_index * block_size:
+                (block_index + 1) * block_size,
+                :
+            ] = X[indices]
+
+        yield simulated[
             :,
-            b * block_size:(b + 1) * block_size,
+            :n_days,
             :
-        ] = X[block_indices]
-
-    return simulated[:, :n_days, :]
+        ]
 
 
 @dataclass
 class BootstrapResult:
+    """
+    Stores the results of the simulation.
+    """
+
     funding_probability: float
+
     failure_probability: float
-    simulated_portfolio_returns: np.ndarray
+
     year_start_values: pd.DataFrame
+
     success_flags: np.ndarray
+
     pre_payment_2033: np.ndarray
+
     post_payment_2033: np.ndarray
+
     ending_2042: np.ndarray
 
 
@@ -183,187 +301,433 @@ def run_simulation(
     n_sims: int = 10_000,
     block_size: int = 21,
     seed: int = 42,
-    cash_flows: Optional[Dict[int, float]] = None,
+    batch_size: int = 250,
+    cash_flows: Optional[
+        Dict[int, float]
+    ] = None,
 ) -> BootstrapResult:
     """
-    Run the 2027-2042 block-bootstrap wealth simulation.
+    Run the 2027-2042 block-bootstrap simulation.
 
-    IMPORTANT:
-        `returns` should be SIMPLE returns, not log returns.
+    `returns` should contain SIMPLE daily returns.
     """
-    returns, weights = _validate_returns_and_weights(returns, weights)
+
+    returns, weights = (
+        _validate_returns_and_weights(
+            returns,
+            weights
+        )
+    )
 
     if cash_flows is None:
-        cash_flows = laura_cash_flows()
+        cash_flows = (
+            laura_cash_flows()
+        )
 
-    years = list(range(START_YEAR, END_YEAR + 1))
+    years = list(
+        range(
+            START_YEAR,
+            END_YEAR + 1
+        )
+    )
+
     n_years = len(years)
 
-    sampled_asset_returns = block_bootstrap(
+    year_start_values = np.empty(
+        (
+            n_sims,
+            n_years
+        ),
+        dtype=np.float64,
+    )
+
+    success_flags = np.ones(
+        n_sims,
+        dtype=bool
+    )
+
+    pre_payment_2033 = np.empty(
+        n_sims,
+        dtype=np.float64
+    )
+
+    post_payment_2033 = np.empty(
+        n_sims,
+        dtype=np.float64
+    )
+
+    ending_2042 = np.empty(
+        n_sims,
+        dtype=np.float64
+    )
+
+    simulation_index = 0
+
+    for simulated_asset_returns in block_bootstrap(
         returns=returns,
         n_sims=n_sims,
         n_years=n_years,
         block_size=block_size,
         trading_days_per_year=TRADING_DAYS_PER_YEAR,
         seed=seed,
-    )
+        batch_size=batch_size,
+    ):
 
-    # Convert each simulated day of asset returns to portfolio return.
-    simulated_portfolio_returns = np.einsum(
-        "sda,a->sd",
-        sampled_asset_returns,
-        weights.values,
-    )
+        current_batch = (
+            simulated_asset_returns.shape[0]
+        )
 
-    values = np.zeros(n_sims, dtype=float)
-    success = np.ones(n_sims, dtype=bool)
-    year_start_values = np.empty((n_sims, n_years), dtype=float)
+        # Convert asset returns into portfolio returns.
+        portfolio_returns = np.einsum(
+            "sda,a->sd",
+            simulated_asset_returns,
+            weights.values,
+        )
 
-    pre_payment_2033 = None
-    post_payment_2033 = None
+        values = np.zeros(
+            current_batch,
+            dtype=np.float64
+        )
 
-    for year_index, year in enumerate(years):
-        cash_flow = cash_flows.get(year, 0.0)
+        batch_success = np.ones(
+            current_batch,
+            dtype=bool
+        )
 
-        # Record the value before the 2033 operating payment.
-        if year == 2033:
-            pre_payment_2033 = values.copy()
+        for year_index, year in enumerate(
+            years
+        ):
 
-        if cash_flow > 0:
-            values += cash_flow
-
-        elif cash_flow < 0:
-            required_payment = -cash_flow
-
-            can_fully_pay = values >= required_payment
-            success &= can_fully_pay
-
-            # Failed paths cannot continue funding the operating commitment.
-            values = np.where(
-                can_fully_pay,
-                values - required_payment,
-                0.0,
+            cash_flow = cash_flows.get(
+                year,
+                0.0
             )
 
-        # Record the value after the beginning-of-year cash flow.
-        year_start_values[:, year_index] = values
+            # Value immediately before the
+            # first operating payment in 2033.
+            if year == 2033:
 
-        # Apply that year's market returns.
-        day_start = year_index * TRADING_DAYS_PER_YEAR
-        day_end = day_start + TRADING_DAYS_PER_YEAR
+                pre_payment_2033[
+                    simulation_index:
+                    simulation_index +
+                    current_batch
+                ] = values
 
-        annual_daily_returns = simulated_portfolio_returns[
-            :, day_start:day_end
-        ]
+            # Beginning-of-year contribution
+            if cash_flow > 0:
 
-        values *= np.prod(1.0 + annual_daily_returns, axis=1)
+                values += cash_flow
 
-        if year == 2033:
-            post_payment_2033 = year_start_values[:, year_index].copy()
+            # Beginning-of-year withdrawal
+            elif cash_flow < 0:
+
+                required_payment = (
+                    -cash_flow
+                )
+
+                can_fully_pay = (
+                    values >= required_payment
+                )
+
+                batch_success &= (
+                    can_fully_pay
+                )
+
+                # If the portfolio cannot fully
+                # make the required payment,
+                # mark that simulation as failed.
+                values = np.where(
+                    can_fully_pay,
+                    values - required_payment,
+                    0.0,
+                )
+
+            # Value immediately after
+            # the beginning-of-year payment.
+            if year == 2033:
+
+                post_payment_2033[
+                    simulation_index:
+                    simulation_index +
+                    current_batch
+                ] = values
+
+            year_start_values[
+                simulation_index:
+                simulation_index +
+                current_batch,
+                year_index,
+            ] = values
+
+            # Apply the simulated market returns
+            # during this year.
+            day_start = (
+                year_index *
+                TRADING_DAYS_PER_YEAR
+            )
+
+            day_end = (
+                day_start +
+                TRADING_DAYS_PER_YEAR
+            )
+
+            annual_returns = (
+                portfolio_returns[
+                    :,
+                    day_start:day_end
+                ]
+            )
+
+            values *= np.prod(
+                1.0 + annual_returns,
+                axis=1
+            )
+
+        success_flags[
+            simulation_index:
+            simulation_index +
+            current_batch
+        ] = batch_success
+
+        ending_2042[
+            simulation_index:
+            simulation_index +
+            current_batch
+        ] = values
+
+        simulation_index += (
+            current_batch
+        )
 
     year_start_df = pd.DataFrame(
         year_start_values,
-        columns=years,
+        columns=years
+    )
+
+    funding_probability = float(
+        success_flags.mean()
     )
 
     return BootstrapResult(
-        funding_probability=float(success.mean()),
-        failure_probability=float(1.0 - success.mean()),
-        simulated_portfolio_returns=simulated_portfolio_returns,
-        year_start_values=year_start_df,
-        success_flags=success,
-        pre_payment_2033=pre_payment_2033,
-        post_payment_2033=post_payment_2033,
-        ending_2042=values.copy(),
+        funding_probability=(
+            funding_probability
+        ),
+
+        failure_probability=(
+            1.0 -
+            funding_probability
+        ),
+
+        year_start_values=(
+            year_start_df
+        ),
+
+        success_flags=(
+            success_flags
+        ),
+
+        pre_payment_2033=(
+            pre_payment_2033
+        ),
+
+        post_payment_2033=(
+            post_payment_2033
+        ),
+
+        ending_2042=(
+            ending_2042
+        ),
     )
 
 
-def summary(result: BootstrapResult) -> pd.Series:
-    """Return key competition metrics."""
+def summary(
+    result: BootstrapResult
+) -> pd.Series:
+    """
+    Return key simulation statistics.
+    """
+
+    values_2033 = (
+        result.pre_payment_2033
+    )
+
+    values_2042 = (
+        result.ending_2042
+    )
 
     return pd.Series(
         {
-            "Funding Probability": result.funding_probability,
-            "Failure Probability": result.failure_probability,
+            "Funding Probability":
+                result.funding_probability,
+
+            "Failure Probability":
+                result.failure_probability,
+
             "2033 Pre-Payment 5th Percentile":
-                np.percentile(result.pre_payment_2033, 5),
+                np.percentile(
+                    values_2033,
+                    5
+                ),
+
             "2033 Pre-Payment Median":
-                np.percentile(result.pre_payment_2033, 50),
+                np.percentile(
+                    values_2033,
+                    50
+                ),
+
             "2033 Pre-Payment 95th Percentile":
-                np.percentile(result.pre_payment_2033, 95),
+                np.percentile(
+                    values_2033,
+                    95
+                ),
+
             "2042 Ending 5th Percentile":
-                np.percentile(result.ending_2042, 5),
+                np.percentile(
+                    values_2042,
+                    5
+                ),
+
             "2042 Ending Median":
-                np.percentile(result.ending_2042, 50),
+                np.percentile(
+                    values_2042,
+                    50
+                ),
+
             "2042 Ending 95th Percentile":
-                np.percentile(result.ending_2042, 95),
+                np.percentile(
+                    values_2042,
+                    95
+                ),
         }
     )
 
 
 def compare_portfolios(
     returns: pd.DataFrame,
-    portfolios: Dict[str, pd.Series],
+    portfolios: Dict[
+        str,
+        pd.Series
+    ],
     n_sims: int = 10_000,
     block_size: int = 21,
     seed: int = 42,
-) -> Tuple[pd.DataFrame, Dict[str, BootstrapResult]]:
+    batch_size: int = 250,
+) -> Tuple[
+    pd.DataFrame,
+    Dict[str, BootstrapResult]
+]:
     """
-    Compare existing Black-Litterman portfolios.
+    Compare multiple portfolio allocations.
 
     Example:
+
         portfolios = {
-            "BL Max Sharpe": max_sharpe_weights,
-            "BL Min Volatility": min_vol_weights,
+            "BL Max Sharpe":
+                max_sharpe_weights,
+
+            "BL Min Volatility":
+                min_vol_weights,
         }
     """
+
     results = {}
+
     rows = {}
 
-    for i, (name, weights) in enumerate(portfolios.items()):
+    for i, (
+        name,
+        weights
+    ) in enumerate(
+        portfolios.items()
+    ):
+
         result = run_simulation(
             returns=returns,
             weights=weights,
             n_sims=n_sims,
             block_size=block_size,
             seed=seed + i,
+            batch_size=batch_size,
         )
-        results[name] = result
-        rows[name] = summary(result)
 
-    return pd.DataFrame(rows).T, results
+        results[name] = result
+
+        rows[name] = summary(
+            result
+        )
+
+    return (
+        pd.DataFrame(rows).T,
+        results
+    )
 
 
 def plot_2033_distribution(
     result: BootstrapResult,
-    title: str = "Simulated Portfolio Value at Beginning of 2033",
+    title: str =
+        "Simulated Portfolio Value at Beginning of 2033",
 ) -> None:
-    """Plot the simulated portfolio-value distribution immediately before the first payment."""
-    values = result.pre_payment_2033
+    """
+    Plot the simulated distribution
+    of portfolio values before the first
+    2033 operating payment.
+    """
 
-    plt.figure(figsize=(9, 5))
-    plt.hist(values, bins=60)
+    import matplotlib.pyplot as plt
+
+    values = (
+        result.pre_payment_2033
+    )
+
+    plt.figure(
+        figsize=(9, 5)
+    )
+
+    plt.hist(
+        values,
+        bins=60
+    )
+
     plt.axvline(
-        np.percentile(values, 5),
+        np.percentile(
+            values,
+            5
+        ),
         linestyle="--",
         label="5th percentile",
     )
+
     plt.axvline(
         np.median(values),
         linestyle="--",
         label="Median",
     )
+
     plt.title(title)
-    plt.xlabel("Portfolio Value ($)")
-    plt.ylabel("Number of Simulations")
+
+    plt.xlabel(
+        "Portfolio Value ($)"
+    )
+
+    plt.ylabel(
+        "Number of Simulations"
+    )
+
     plt.legend()
+
     plt.tight_layout()
+
     plt.show()
 
 
 if __name__ == "__main__":
-    print("Block bootstrap module is ready.")
+
     print(
-        "Use simple daily returns from compute_returns(..., method='simple') "
+        "Block bootstrap module is ready."
+    )
+
+    print(
+        "Use simple daily returns from "
+        "compute_returns(..., method='simple') "
         "and pass in your BL optimizer weights."
     )
