@@ -19,6 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 data = ["yfinance>=0.2"]
 dev = ["pytest>=7.0"]
+ui = ["streamlit>=1.32"]
 
 [tool.setuptools.packages.find]
 include = ["black_litterman*"]

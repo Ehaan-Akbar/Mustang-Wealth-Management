@@ -63,6 +63,21 @@ Run the full worked example (no API keys or network needed):
 python examples/run_example.py
 ```
 
+## Interactive dashboard
+
+Install the dependencies and launch the Streamlit interface:
+
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+The dashboard works offline with synthetic correlated returns, or accepts a
+CSV of daily prices/returns. It includes editable market assumptions and
+investor views, maximum-Sharpe/minimum-volatility optimization, and a
+block-bootstrap Monte Carlo projection. The **Iterations** control supports
+100 to 100,000 simulation paths.
+
 To use real historical prices instead of synthetic data, set
 `USE_YFINANCE = True` at the top of `examples/run_example.py` (requires
 `pip install yfinance`).

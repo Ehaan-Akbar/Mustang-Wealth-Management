@@ -6,6 +6,7 @@ from .data_utils import (
     compute_covariance,
     market_cap_weights,
 )
+from .block_bootstrap import BootstrapResult, compare_portfolios, run_simulation
 
 __all__ = [
     "BlackLittermanModel",
@@ -15,6 +16,9 @@ __all__ = [
     "compute_returns",
     "compute_covariance",
     "market_cap_weights",
+    "BootstrapResult",
+    "compare_portfolios",
+    "run_simulation",
 ]
 
 __version__ = "0.1.0"
