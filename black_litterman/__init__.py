@@ -13,6 +13,18 @@ from .stress_testing import (
     run_stress_test,
     compare_stress_tests,
 )
+from .glide_path import (
+    LIABILITIES,
+    GlidePathAllocation,
+    calculate_cumulative_liabilities,
+    calculate_glide_path,
+    calculate_liability_coverage,
+    calculate_required_protected_assets,
+    generate_glide_path,
+    get_liability,
+    get_liability_schedule,
+    get_remaining_liabilities,
+)
 
 __all__ = [
     "BlackLittermanModel",
