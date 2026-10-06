@@ -82,6 +82,20 @@ To use real historical prices instead of synthetic data, set
 `USE_YFINANCE = True` at the top of `examples/run_example.py` (requires
 `pip install yfinance`).
 
+### Funding Probability & Sensitivity Analysis
+
+Measures the probability that the portfolio can fully fund the required $50,000 annual liabilities from 2033 through 2042. Monte Carlo simulations are used to estimate both overall and year-by-year funding probabilities.
+
+The analysis also tests how changes in key assumptions, including annual liabilities, equity returns, bond returns, and equity volatility, affect funding certainty. Additional scenario and shortfall analyses evaluate optimistic, base, and pessimistic conditions while quantifying potential funding gaps.
+
+#### Methods
+- Monte Carlo funding probability
+- Year-by-year funding probability
+- Shortfall analysis
+- One-variable sensitivity analysis
+- Two-variable sensitivity analysis
+- Optimistic, base, and pessimistic scenario analysis
+
 ## How the model works
 
 1. **Prior (equilibrium) returns** are derived by reverse-optimizing the
