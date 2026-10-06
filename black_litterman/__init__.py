@@ -7,6 +7,12 @@ from .data_utils import (
     market_cap_weights,
 )
 from .block_bootstrap import BootstrapResult, compare_portfolios, run_simulation
+from .stress_testing import (
+    SCENARIOS,
+    StressTestResult,
+    run_stress_test,
+    compare_stress_tests,
+)
 
 __all__ = [
     "BlackLittermanModel",
@@ -19,6 +25,10 @@ __all__ = [
     "BootstrapResult",
     "compare_portfolios",
     "run_simulation",
+    "SCENARIOS",
+    "StressTestResult",
+    "run_stress_test",
+    "compare_stress_tests",
 ]
 
 __version__ = "0.1.0"
