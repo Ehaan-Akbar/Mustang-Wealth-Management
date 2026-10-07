@@ -149,6 +149,7 @@ def simulate_portfolio_path(
     cash_volatility: float = CASH_VOLATILITY,
     correlation: float = CORRELATION,
     rng: np.random.Generator | None = None,
+    liabilities: Dict[int, float] | None = None,
 ) -> Tuple[bool, pd.DataFrame]:
     """
     Simulate one portfolio path from 2027 through 2042.
@@ -172,6 +173,12 @@ def simulate_portfolio_path(
 
     if rng is None:
         rng = np.random.default_rng()
+
+    liabilities = dict(LIABILITIES if liabilities is None else liabilities)
+    if any(not np.isfinite(amount) or amount < 0 for amount in liabilities.values()):
+        raise ValueError("Liabilities must be finite, non-negative amounts.")
+    if any(year < START_YEAR or year > END_YEAR for year in liabilities):
+        raise ValueError("Liability years must be between 2027 and 2042.")
 
     portfolio_value = 0.0
 
@@ -240,7 +247,7 @@ def simulate_portfolio_path(
         # Liability Payment
         # ----------------------------------------------------
 
-        liability = LIABILITIES.get(year, 0.0)
+        liability = liabilities.get(year, 0.0)
 
         payment_made = min(
             portfolio_value,
@@ -352,9 +359,11 @@ def calculate_yearly_funding_probability(
 
     rng = np.random.default_rng(random_seed)
 
+    liabilities = simulation_kwargs.get("liabilities")
+    liabilities = LIABILITIES if liabilities is None else liabilities
     funding_counts: Dict[int, int] = {
         year: 0
-        for year in LIABILITIES
+        for year, amount in liabilities.items() if amount > 0
     }
 
     for _ in range(n_simulations):
@@ -384,7 +393,7 @@ def calculate_yearly_funding_probability(
         rows.append(
             {
                 "Year": year,
-                "Liability": LIABILITIES[year],
+                "Liability": liabilities[year],
                 "Funding Probability": probability,
                 "Funding Probability (%)": probability * 100,
             }
@@ -499,22 +508,11 @@ def run_sensitivity_analysis(
 
     for liability in liability_values:
 
-        original_liabilities = LIABILITIES.copy()
-
-        LIABILITIES.update(
-            {
-                year: float(liability)
-                for year in LIABILITIES
-            }
-        )
-
         probability = calculate_funding_probability(
             n_simulations=n_simulations,
             random_seed=random_seed,
+            liabilities={year: float(liability) for year in LIABILITIES},
         )
-
-        LIABILITIES.clear()
-        LIABILITIES.update(original_liabilities)
 
         scenarios.append(
             {
@@ -650,23 +648,12 @@ def run_two_variable_sensitivity(
 
         for annual_liability in annual_liabilities:
 
-            original_liabilities = LIABILITIES.copy()
-
-            LIABILITIES.update(
-                {
-                    year: float(annual_liability)
-                    for year in LIABILITIES
-                }
-            )
-
             probability = calculate_funding_probability(
                 n_simulations=n_simulations,
                 random_seed=random_seed,
                 equity_return=equity_return,
+                liabilities={year: float(annual_liability) for year in LIABILITIES},
             )
-
-            LIABILITIES.clear()
-            LIABILITIES.update(original_liabilities)
 
             rows.append(
                 {

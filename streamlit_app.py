@@ -16,6 +16,7 @@ from black_litterman import (
     market_cap_weights,
 )
 from black_litterman.block_bootstrap import run_simulation, summary
+from dashboard_planning import show_funding, show_glide_path, show_stress_tests
 
 
 DEFAULT_MARKET_CAPS = {
@@ -67,9 +68,20 @@ st.set_page_config(
 
 st.title("Mustang Wealth Lab")
 st.caption(
-    "Black–Litterman allocation, portfolio optimization, and block-bootstrap "
-    "Monte Carlo planning in one interface."
+    "Portfolio allocation, glide-path planning, funding analysis, and historical stress tests."
 )
+
+workspace = st.sidebar.radio(
+    "Workspace", ["Portfolio analysis", "Glide path & liabilities", "Funding & sensitivity"]
+)
+if workspace != "Portfolio analysis":
+    if workspace == "Glide path & liabilities":
+        show_glide_path()
+    else:
+        show_funding()
+    st.divider()
+    st.caption("Educational planning tool only — results are simulated, not guaranteed, and are not investment advice.")
+    st.stop()
 
 with st.sidebar:
     st.header("Model controls")
@@ -133,7 +145,8 @@ views = st.data_editor(
     },
 )
 
-st.subheader("3 · Monte Carlo settings")
+st.subheader("3 · Block-bootstrap Monte Carlo settings")
+st.caption("Resamples daily returns with fixed optimized weights. Cash flows occur at the start of each year.")
 sim_a, sim_b, sim_c = st.columns(3)
 with sim_a:
     iterations = st.number_input(
@@ -231,8 +244,8 @@ if run:
         m3.metric("Volatility", f"{volatility:.1%}")
         m4.metric("Sharpe ratio", f"{sharpe:.2f}")
 
-        allocation_tab, outlook_tab, detail_tab = st.tabs(
-            ["Allocation", "Monte Carlo outlook", "Model detail"]
+        allocation_tab, outlook_tab, stress_tab, detail_tab = st.tabs(
+            ["Allocation", "Monte Carlo outlook", "Historical stress tests", "Model detail"]
         )
         with allocation_tab:
             allocation = weights.rename("Weight").to_frame()
@@ -246,6 +259,9 @@ if run:
             st.caption("Portfolio value at the start of each year, after that year's cash flow.")
             st.markdown("**Ending value distribution (2042)**")
             st.bar_chart(make_histogram(result.ending_2042))
+
+        with stress_tab:
+            show_stress_tests(returns, weights, data_source)
 
         with detail_tab:
             left, right = st.columns(2)

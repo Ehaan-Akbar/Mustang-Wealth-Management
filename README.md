@@ -78,6 +78,26 @@ investor views, maximum-Sharpe/minimum-volatility optimization, and a
 block-bootstrap Monte Carlo projection. The **Iterations** control supports
 100 to 100,000 simulation paths.
 
+Use the sidebar to switch between **Portfolio analysis**, **Glide path &
+liabilities**, and **Funding & sensitivity**. The glide-path view shows the
+annual equity/bond/cash targets and liability schedule. Funding analysis accepts
+contributions, annual liabilities, asset-class returns, volatility, correlation,
+simulation count, and seed; results include overall and yearly funding
+probabilities, shortfalls, and CSV downloads.
+
+Run one-variable sensitivity, two-variable sensitivity, and optimistic/base/
+pessimistic comparisons separately. These comparisons use the module's baseline
+assumptions, displayed in the dashboard, independently of custom funding inputs.
+Results remain available while navigating between planning screens. Larger
+comparison runs can take several minutes.
+
+The funding model applies annual returns before paying liabilities using the
+dynamic glide path. The block-bootstrap model uses fixed optimized ticker weights
+and beginning-of-year cash flows. In Portfolio analysis, the **Historical stress
+tests** tab replays the uploaded data for the 2008 crisis, COVID crash, and 2022
+bear market; synthetic demo data is excluded, and missing or partial periods
+are identified.
+
 To use real historical prices instead of synthetic data, set
 `USE_YFINANCE = True` at the top of `examples/run_example.py` (requires
 `pip install yfinance`).
