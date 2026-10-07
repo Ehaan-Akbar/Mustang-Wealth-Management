@@ -173,7 +173,7 @@ def simulate_portfolio_path(
     if rng is None:
         rng = np.random.default_rng()
 
-    portfolio_value = initial_portfolio
+    portfolio_value = 0.0
 
     rows = []
 
