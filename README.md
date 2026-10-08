@@ -1,350 +1,80 @@
 ﻿# Mustang Wealth Management
 
-## Overview
+## Investment strategy for Laura Gao
 
-Mustang Wealth Lab is a Python research toolkit and interactive dashboard for building stock and ETF portfolios, testing investment views, and exploring future funding outcomes. It combines Black–Litterman allocation, mean–variance optimization, daily Monte Carlo simulation, historical block bootstrap, and liability planning.
+Mustang Wealth Management is our goals-based investment strategy for the 2026 Wharton Global High School Investment Competition. We treat Laura Gao's portfolio as two connected obligations: grow capital for a 2033 creative residency in Taiwan, then reliably fund ten $50,000 operating payments from 2033 through 2042. The facility contribution is important, but it is conditional on securing those payments and preserving flexibility.
 
-The dashboard connects asset selection to portfolio construction and simulation in one workflow. Separate planning tools evaluate a 2027–2042 contribution and liability schedule using an equity, bond, and cash glide path. The underlying models can also be used directly from Python.
+Our guiding principle is **protect the promise; grow the possibility**. Before 2033, the portfolio seeks diversified growth while steadily reducing the chance that a market decline near the commitment date disrupts the plan. In 2033, assets are divided into an operating reserve, a facility contribution, and flexible capital. We do not assume grants, co-sponsors, program fees, or future business income will cover any of the ten required payments.
 
-## Research Workflow
+## Client goals and investment implications
 
-1. [Load and inspect data](#data-and-return-estimation): choose stocks and ETFs, download historical prices, upload a CSV, or explore synthetic data.
-2. [Express investment views](#blacklitterman-model): combine a reference allocation with absolute return expectations and relative outperformance views.
-3. [Construct an allocation](#allocation-objectives): optimize expected return relative to risk, subject to position limits.
-4. [Generate portfolio paths](#daily-monte-carlo): simulate daily returns using historical assumptions or the Black–Litterman posterior.
-5. [Compare historical resampling](#historical-block-bootstrap): project the same portfolio using consecutive blocks of observed returns.
-6. [Replay market stress](#historical-stress-tests): apply the selected allocation to historical crisis periods.
-7. [Evaluate future payments](#glide-path-and-funding-analysis): estimate liability funding probabilities, shortfalls, and sensitivity to assumptions.
+The case specifies a $300,000 investment at the beginning of 2027 and a $150,000 addition at the beginning of 2028. No further portfolio cash flows occur before 2033. Beginning in 2033, the portfolio must pay $50,000 at the start of each year for ten years. Laura's living expenses are covered elsewhere, giving the portfolio capacity to accept measured risk before 2033, while the fixed operating commitment limits how much risk is appropriate as the first payment approaches.
 
-## Getting Started
+The residency reflects Laura's work as an author, educator, entrepreneur, and community builder. We express that alignment through the goals, stewardship, and decision process—not by concentrating the portfolio in technology, media, or Taiwan-related investments. Diversification is especially valuable because her career and future project already have exposure to creative and technology industries.
 
-Python 3.11 or newer is recommended. From the project directory, install the dependencies and start the dashboard:
+The case does not specify the facility's total cost, so we recommend a contribution based on what the portfolio can support rather than a predetermined target. The 2031 co-sponsor conversation is an early risk date: any range communicated then should be defensible under weaker markets as well as favorable ones.
+
+## Three-stage portfolio plan
+
+| Period | Portfolio role | Strategy |
+| --- | --- | --- |
+| **2027–2030: Grow** | Build capital while there are no planned withdrawals. | Maintain a diversified, long-only portfolio across equities and high-quality fixed income. An illustrative starting mix is 60–70% equities and 30–40% bonds and cash, subject to eligible securities and scenario analysis. Avoid relying on a single sector, issuer, or region. |
+| **2031–2032: Protect** | Prepare for the co-sponsor discussion and the first payment. | Gradually reduce equity exposure and move assets needed for the operating reserve toward cash and high-quality bonds. Update projected 2033 outcomes and the contribution range as actual market results arrive. |
+| **2033–2042: Match and maintain flexibility** | Pay the operating commitment and support the facility responsibly. | First fund the full operating reserve. Match the near-term payments with cash and laddered high-quality bonds maturing before each payment. Contribute only from the remaining portfolio, retaining a separate flexibility buffer. Invest any longer-horizon remainder according to its own time horizon. |
+
+The project's dynamic glide path makes the de-risking gradual: it begins near 70% equities in 2027, falls to about 50% by 2031, and reaches about 20% in 2033, with the balance in bonds and cash. These are policy guideposts that should be reviewed against funding results and market conditions, not a promise that one allocation is optimal in every scenario. Once payments begin, the operating reserve should be managed to the payment dates rather than exposed to the growth portfolio's full volatility.
+
+At 2033, the facility contribution follows a simple priority rule:
+
+> **Facility contribution = portfolio value − fully funded operating reserve − flexibility buffer**
+
+The contribution cannot fall below zero. The flexibility buffer protects against project changes, unexpected costs, and the risk of committing every remaining dollar. It should be sized from portfolio outcomes and stated as a policy choice, not as an estimate of facility cost. A preliminary planning discussion can test a 10–20% buffer of assets remaining after the operating reserve; the final recommendation should be grounded in the simulation results.
+
+## How the models work together
+
+Each model answers a different decision question, and their outputs feed the next step:
+
+1. **Market data and return estimates** establish the evidence base. Adjusted prices are converted to daily returns; covariance estimates describe volatility and how assets move together. Covariance shrinkage reduces dependence on noisy historical correlations.
+2. **Black–Litterman** combines a diversified reference portfolio with explicit absolute or relative investment views. Its posterior expected returns provide a disciplined input to allocation decisions while allowing views to influence the result in proportion to their confidence.
+3. **Mean–variance optimization** translates expected returns and covariance into portfolio weights. Maximum Sharpe is the growth-phase objective; minimum volatility is available when protecting capital takes priority. Long-only and position-limit constraints help prevent a mathematically attractive result from becoming an impractical concentration.
+4. **The glide path and liability schedule** connect those portfolio decisions to the actual calendar of contributions and payments. Equity exposure declines as 2033 approaches, while cash and bonds take on a larger role in funding near-term obligations.
+5. **Block-bootstrap and Monte Carlo projections** test whether the resulting strategy can support the $50,000 payments and show the range of possible 2033 portfolio values. Block bootstrap resamples consecutive historical return periods, retaining some short-run market behavior; Monte Carlo explores a wider distribution under stated return and volatility assumptions. Funding probability is the share of simulated paths that make every payment in full.
+6. **Historical stress tests and sensitivity analysis** challenge the plan under severe observed market periods and changes to assumptions such as returns, volatility, and liability size. These checks show where a strategy is vulnerable and whether the facility contribution or buffer should change.
+
+Together, these models connect security-level views to portfolio weights, portfolio weights to a time-based risk path, and that path to the funding outcomes Laura actually cares about. No single model establishes certainty: the allocation model proposes weights, while liability matching, simulations, and stress analysis test whether those weights serve the goals.
+
+## Why these models—and what they cannot tell us
+
+Black–Litterman is useful when an investment team has informed views but does not want subjective forecasts to overwhelm a diversified market-based starting point. Mean–variance optimization makes the return-versus-risk tradeoff explicit. The glide path reflects the changing time horizon: growth matters early, while payment reliability matters more as 2033 approaches. Block bootstrap and Monte Carlo are complementary because one reuses observed return sequences and the other explores outcomes from parameterized distributions. Stress and sensitivity analysis make the recommendation less dependent on a single average-return forecast.
+
+We define **high funding certainty** through two tests: (1) by the beginning of 2033, the reserve is composed of cash and high-quality instruments matched to all ten payment dates; and (2) before 2033, simulations show at least a 95% probability—preferably 97.5%—of having enough assets to establish that reserve. These are decision thresholds, not guarantees. Results depend on return, volatility, correlation, interest-rate, and timing assumptions; historical data cannot predict every future regime. The final report should disclose those assumptions, test poor early-return sequences and inflation scenarios, and distinguish the nominal fixed $50,000 case payments from the residency's potentially rising real costs.
+
+The strategy outline also calls for VaR/CVaR optimization as a downside-risk tool. That is a prospective extension: the current repository does not implement a VaR/CVaR optimizer. Existing historical stress tests, downside outcomes in simulation, and funding shortfall analysis provide the implemented risk checks. Any VaR/CVaR result should be presented only after that component is built and validated.
+
+The 2031 co-sponsor range should be derived from the distribution of 2033 **facility capacity after** reserving the full operating liability and flexibility buffer. A defensible lower bound can use a conservative percentile and an upper bound a moderate favorable percentile; neither should rely on an optimistic tail. The range should be refreshed in 2031 and include the confidence level from the model. If markets disappoint, reduce the facility contribution before weakening the operating reserve.
+
+## Competition workflow
+
+The WInS trading portfolio is the competition-period implementation and demonstration of our decision process. Long-term projections begin with the case's $300,000 in 2027 and $150,000 in 2028; WInS trading gains or losses are not added to those projections. The three deliverables should tell one consistent story: Trading Notes explain how decisions tested the strategy, the Investment Policy Statement defines its rules, and the Final Report evaluates implementation and recommends the reserve, facility contribution, flexibility buffer, and co-sponsor range.
+
+## Research dashboard
+
+This repository includes a Streamlit research dashboard for loading asset data, expressing Black–Litterman views, comparing allocation objectives, running simulations and stress tests, and exploring glide paths and funding sensitivity. It supports the strategy analysis; the competition recommendation should still be based on disclosed assumptions and reviewed outcomes.
 
 ```powershell
 python -m pip install -r requirements.txt
 python -m streamlit run streamlit_app.py
 ```
 
-Open **http://localhost:8501**. The interface requires Streamlit 1.50 or newer; rerun the installation command when upgrading from an older version. Stop the server with **Ctrl+C**.
+Use **Synthetic demo** for offline exploration. Synthetic data is illustrative and is not historical performance for the named securities. For CSV data, use dates in the first column and asset symbols in the remaining columns.
 
-For a first run:
+## Repository map
 
-1. Open **Assets & data**, choose an example preset or enter your own symbols, and click **Load selected assets**. Select **Synthetic demo** to work offline.
-2. Open **Black–Litterman** to enable views, set confidence levels, and inspect the resulting weights.
-3. Open **Simulations**, choose a method and horizon, and click **Run simulations**.
-4. Inspect individual paths, compare outcomes, and download results.
+- `black_litterman/black_litterman.py` and `optimizer.py` — posterior return estimates and portfolio allocation.
+- `black_litterman/glide_path.py` and `funding_probability.py` — annual asset mix, liabilities, funding probability, and sensitivity analysis.
+- `black_litterman/block_bootstrap.py` and `portfolio_lab.py` — portfolio projections and simulation workflows.
+- `black_litterman/stress_testing.py` — historical market stress tests.
+- `dashboard_*.py` and `streamlit_app.py` — interactive research interface.
+- `Info/` — competition case, strategy outline, and client research used to shape this strategy.
 
-An offline Python example is available from the repository root:
-
-```powershell
-python -m examples.run_example
-```
-
-For development or use of the package outside this directory:
-
-```powershell
-python -m pip install -e .
-```
-
-## Dashboard Organization
-
-| Page | Purpose |
-| --- | --- |
-| **Assets & data** | Select the asset universe, load prices or returns, inspect historical growth and correlations, and export aligned data. |
-| **Black–Litterman** | Edit reference weights, investment views, confidence, and optimization constraints; compare prior and posterior estimates. |
-| **Simulations** | Run Monte Carlo, block bootstrap, or both; inspect actual paths, distributions, and target probabilities. |
-| **Historical stress tests** | Replay an optimized allocation over available historical crisis data. |
-| **Glide path & liabilities** | Inspect annual equity, bond, and cash targets alongside scheduled payments. |
-| **Funding & sensitivity** | Estimate funding success and shortfalls, then run assumption and scenario comparisons. |
-
-Portfolio settings and completed simulation results stay in the current Streamlit session when switching pages. Reloading the asset universe clears the previous portfolio simulation. Session results are not a permanent saved project; use CSV exports to retain them.
-
-## Model Configuration
-
-Portfolio controls are available in the dashboard. Python users can pass parameters directly to the functions in [portfolio_lab.py](black_litterman/portfolio_lab.py).
-
-| Control | Default | Effect |
-| --- | --- | --- |
-| Reference allocation | Equal weights | Defines the equilibrium portfolio used to derive the prior; custom inputs are normalized. |
-| Optimization objective | Maximum Sharpe | Chooses maximum Sharpe or minimum volatility. |
-| Maximum position | 100% | Limits an individual asset's optimized weight. |
-| Risk-free rate | 2% | Converts between excess and total return expectations and enters the Sharpe calculation. |
-| Risk aversion, $\delta$ | 2.5 | Scales equilibrium excess returns. |
-| Prior uncertainty, $\tau$ | 0.05 | Scales uncertainty in the equilibrium prior. |
-| Covariance shrinkage | 5% | Blends the sample covariance toward its diagonal. |
-| Simulation method | Compare both | Executes Monte Carlo and block bootstrap separately. |
-| Starting balance | $100,000 | Sets the portfolio value at time zero. |
-| Projection horizon | 10 years | Supports 1–40 years. |
-| Iterations | 1,000 per method | Supports 100–100,000 paths per method in the UI. |
-| Annual contribution / withdrawal | $0 / $0 | Adds or withdraws cash at the start of each projection year. |
-| First withdrawal year | 1 | Determines when recurring withdrawals begin. |
-| Bootstrap block length | 21 trading days | Controls how much consecutive historical behavior is retained per block. |
-| Random seed | 42 | Makes a run reproducible for the same data and parameters. |
-| Ending balance target | $200,000 | Sets the threshold used to calculate target probability from completed paths. |
-
-Changing model inputs immediately updates the Black–Litterman allocation. Simulations execute only when **Run simulations** is clicked. If inputs change afterward, the previous results remain visible with a notice that they are out of date.
-
-## Data and Return Estimation
-
-Historical prices are downloaded through `yfinance` with price adjustment enabled. The dashboard caches downloads for one hour and offers CSV input as an alternative. CSV files must have dates in the first column and ticker symbols as the remaining column names. Daily simple returns use decimal values: `0.01` means a 1% return.
-
-The portfolio lab requires at least 60 overlapping daily returns for every selected asset. Missing symbols are reported, missing observations are excluded, and missing prices are not forward-filled. Use assets quoted in the same currency; the app does not perform currency conversion.
-
-### Daily Returns and Covariance
-
-For adjusted price $P_{i,t}$, an asset's daily simple return is:
-
-$$
-r_{i,t} = \frac{P_{i,t}}{P_{i,t-1}} - 1
-$$
-
-The model annualizes daily covariance using 252 trading days:
-
-$$
-\Sigma = 252\,\operatorname{Cov}(r_t)
-$$
-
-The dashboard applies diagonal shrinkage before fitting Black–Litterman:
-
-$$
-\Sigma_{\lambda} = (1-\lambda)\Sigma + \lambda\operatorname{diag}(\Sigma)
-$$
-
-Here, $\operatorname{diag}(\Sigma)$ denotes a diagonal matrix containing the original asset variances. This reduces the influence of estimated cross-asset covariance, which can help stabilize highly correlated asset selections.
-
-Historical growth charts and the correlation matrix describe the loaded sample. Synthetic demo histories are generated examples and do not represent the actual performance of their ticker labels.
-
-## Black–Litterman Model
-
-Implementation: [black_litterman.py](black_litterman/black_litterman.py), with dashboard integration in [portfolio_lab.py](black_litterman/portfolio_lab.py).
-
-### Equilibrium Prior
-
-The prior expected excess returns are obtained from a reference portfolio:
-
-$$
-\pi = \delta\Sigma_{\lambda}w_{\mathrm{ref}}
-$$
-
-Here, $w_{\mathrm{ref}}$ is the reference allocation and $\delta$ is the risk-aversion parameter. The dashboard starts with equal weights and permits a custom allocation. For a mixed stock and ETF universe, reference weights describe the intended benchmark allocation; ETF fund size is not automatically treated as company market capitalization.
-
-### Investor Views
-
-Two view types are supported:
-
-- **Absolute:** an expected annual return for one asset, such as a 10% total return for a chosen stock.
-- **Relative:** an expected annual return difference, such as one ETF outperforming another by 2 percentage points.
-
-Each enabled view has a confidence level. The dashboard accepts absolute views as total returns and subtracts the risk-free rate before passing them to the core model. Relative views already describe return differences. Direct callers of `BlackLittermanModel` should supply absolute views in excess-return terms.
-
-Let $P$ encode the assets in each view, $Q$ contain expected excess returns or return differences, and $\Omega$ describe view uncertainty. The implementation scales each view's uncertainty using its variance and confidence, with numerical safeguards for near-zero uncertainty.
-
-### Posterior Estimates
-
-The model combines the prior and views using:
-
-$$
-M = \left[(\tau\Sigma_{\lambda})^{-1} + P^T\Omega^{-1}P\right]^{-1}
-$$
-
-$$
-\mu_{\mathrm{excess}} = M\left[(\tau\Sigma_{\lambda})^{-1}\pi + P^T\Omega^{-1}Q\right]
-$$
-
-$$
-\Sigma_{\mathrm{post}} = \Sigma_{\lambda} + M
-$$
-
-With no views, the implementation returns the equilibrium prior and input covariance. For optimization and displayed return estimates, the dashboard adds the risk-free rate back to the posterior excess returns.
-
-## Allocation Objectives
-
-Implementation: [optimizer.py](black_litterman/optimizer.py).
-
-The dashboard supports two objectives, solved with SciPy's SLSQP optimizer.
-
-**Maximum Sharpe:**
-
-$$
-\max_w \frac{w^T\mu-r_f}{\sqrt{w^T\Sigma_{\mathrm{post}}w}}
-$$
-
-**Minimum volatility:**
-
-$$
-\min_w w^T\Sigma_{\mathrm{post}}w
-$$
-
-Here, $\mu$ contains total expected returns and $r_f$ is the risk-free rate. Dashboard allocations are long-only and constrained by:
-
-$$
-\sum_i w_i=1, \qquad 0\leq w_i\leq w_{\max}
-$$
-
-The position cap must permit a fully invested portfolio. For example, two assets require a cap of at least 50%. The Python optimizer also exposes target-return and efficient-frontier methods.
-
-## Daily Monte Carlo
-
-Implementation: [portfolio_lab.py](black_litterman/portfolio_lab.py).
-
-The engine generates independent daily log-return draws for the weighted portfolio, using one of two calibrations.
-
-### Historical Calibration
-
-First calculate the daily return of the fixed-weight portfolio:
-
-$$
-r_{p,t}=w^Tr_t, \qquad \ell_t=\log(1+r_{p,t})
-$$
-
-Simulated log returns are drawn from a normal distribution fitted to the mean and sample standard deviation of $\ell_t$.
-
-### Black–Litterman Calibration
-
-The posterior gives portfolio drift $\mu_p=w^T\mu$ and volatility $\sigma_p=\sqrt{w^T\Sigma_{\mathrm{post}}w}$. Daily gross returns are generated as:
-
-$$
-G_t=\exp\left[\frac{\mu_p-\tfrac12\sigma_p^2}{252}+\frac{\sigma_p}{\sqrt{252}}Z_t\right],
-\qquad Z_t\sim\mathcal{N}(0,1)
-$$
-
-This is a portfolio-level lognormal model with constant parameters. Each draw updates the balance along an individual path. Contributions and withdrawals are applied at each year's start, before that year's daily returns.
-
-## Historical Block Bootstrap
-
-Implementation: [block_bootstrap.py](black_litterman/block_bootstrap.py), used by the configurable engine in [portfolio_lab.py](black_litterman/portfolio_lab.py).
-
-Block bootstrap constructs future paths from consecutive sequences of observed daily returns:
-
-1. Calculate the historical daily return of the selected fixed-weight portfolio.
-2. Randomly select starting positions in that return history.
-3. Copy blocks of the chosen length, wrapping around the end of the sample when necessary.
-4. Join enough blocks to cover the projection horizon and compound their returns.
-
-Sampling the weighted portfolio series preserves simultaneous asset moves for fixed weights. Consecutive days retain dependence within each block; ordering between independently selected blocks is randomized.
-
-Both simulation methods assume constant weights maintained through daily rebalancing. Black–Litterman views can change the optimized weights used by bootstrap, but they do not replace its historical return distribution.
-
-The original `run_simulation()` function remains available for the fixed 2027–2042 cash-flow case. The dashboard's configurable stock/ETF simulations use `simulate_projection()`.
-
-## Simulation Outputs and Reproducibility
-
-The **Simulations** page separates output into three views:
-
-| View | Contents |
-| --- | --- |
-| **Individual paths** | Actual retained daily trajectories, selectable path numbers, ending values, lowest observed balances, and withdrawal success. |
-| **Outcome comparison** | Median and 5th–95th percentile bands, ending-value distributions, target probabilities, and overall withdrawal funding. |
-| **Run details** | Completed-run settings, data source, asset universe, and the weights used. |
-
-Each run records its number, completion time, elapsed runtime, seed, and computed path count. Progress is updated as batches finish. Every click of **Run simulations** executes the engine again; navigating pages or adjusting chart controls reuses the stored run.
-
-For memory efficiency, the first **up to 200 paths** are retained at full daily resolution. The chart can display fewer paths and a subset of actual dates. **Year-end values and summary statistics include every simulated path.** These displayed paths are drawn from the same calculations used for the summaries.
-
-CSV exports include a selected daily path, all retained daily paths, all annual paths, and outcome comparisons. Large path exports are prepared on request. With the same input data, parameters, and seed, a run is reproducible; change the seed for another random sample.
-
-An ending-balance target can be changed without rerunning the engine. Its probability is the fraction of completed paths that end at or above that value. Withdrawal funding instead measures whether every scheduled withdrawal was fully paid along a path.
-
-## Historical Stress Tests
-
-Implementation: [stress_testing.py](black_litterman/stress_testing.py).
-
-The stress page replays the optimized allocation against available daily returns from three periods:
-
-| Scenario | Start | End |
-| --- | --- | --- |
-| 2008 Financial Crisis | January 1, 2008 | December 31, 2008 |
-| COVID Crash | February 19, 2020 | March 23, 2020 |
-| 2022 Bear Market | January 3, 2022 | October 12, 2022 |
-
-The dashboard uses a $100,000 starting balance and reports total return, maximum drawdown, worst daily return, and ending value. It also displays the portfolio-value path and the actual dates available in the loaded data.
-
-Load a date range covering the desired crisis. Missing periods are identified, partial coverage is flagged, and synthetic demo histories are excluded. These are fixed-allocation historical replays, not walk-forward backtests of a strategy trained only on information available at the time.
-
-## Glide Path and Funding Analysis
-
-Implementation: [glide_path.py](black_litterman/glide_path.py) and [funding_probability.py](black_litterman/funding_probability.py).
-
-This planning model uses three asset classes—equities, bonds, and cash—and a calendar-based allocation schedule. Its baseline assumes a $300,000 contribution in 2027, another $150,000 in 2028, and ten annual $50,000 liabilities from 2033 through 2042.
-
-### Allocation Schedule
-
-| Year | Equities | Bonds | Cash |
-| --- | --- | --- | --- |
-| 2027 | 70% | 25% | 5% |
-| 2030 | 60% | 35% | 5% |
-| 2032 | 35% | 55% | 10% |
-| 2033 | 20% | 65% | 15% |
-| 2042 | 2% | 74% | 24% |
-
-The full annual schedule and liability totals are available on **Glide path & liabilities**.
-
-### Funding Probability and Shortfall
-
-For $N$ simulated paths, the estimated probability of funding every required payment is:
-
-$$
-\widehat{P}_{\mathrm{funded}}=\frac{1}{N}\sum_{j=1}^{N}\mathbf{1}\{\text{all liabilities are fully paid on path }j\}
-$$
-
-The funding page also reports payment success by year and the probability of any shortfall. Shortfall statistics use the largest single-year funding gap within each path; the reported average and median are conditional on paths with a shortfall.
-
-Custom funding runs accept contributions, annual liabilities, asset-class returns and volatility, correlation, simulation count, and seed. Contributions occur at the start of the year, annual returns are applied, and liabilities are then paid. This payment timing differs from the stock/ETF simulation page, where withdrawals occur before the year's returns.
-
-### Sensitivity and Scenario Comparisons
-
-Comparisons run separately from custom funding inputs. They use the module's baseline: returns of 8% / 4% / 2%, volatility of 18% / 6% / 1% for equities / bonds / cash, and a common correlation of 0.20.
-
-- **One-variable sensitivity** varies annual liabilities, equity returns, bond returns, or equity volatility.
-- **Two-variable sensitivity** combines equity-return assumptions with annual liability amounts.
-- **Scenario comparisons** evaluate optimistic, base, and pessimistic return/volatility assumptions.
-
-The funding model's asset-class glide path is separate from the chosen stock/ETF allocation. Its probabilities should be interpreted using its own assumptions and cash-flow timing.
-
-## Repository Guide
-
-```text
-Mustang-Wealth-Management/
-├── streamlit_app.py                 # Dashboard entry point and page navigation
-├── dashboard_portfolio.py           # Asset loading, BL controls, market-data views
-├── dashboard_simulations.py         # Simulation controls, actual paths, exports
-├── dashboard_planning.py            # Glide path, funding, and stress-test views
-├── black_litterman/
-│   ├── black_litterman.py           # Equilibrium prior, views, posterior estimates
-│   ├── optimizer.py                 # Mean–variance allocation objectives
-│   ├── data_utils.py                # Price downloads and return helpers
-│   ├── portfolio_lab.py             # Data validation, model fitting, daily simulations
-│   ├── block_bootstrap.py           # Circular block sampler and fixed-case simulation
-│   ├── stress_testing.py            # Historical crisis replays
-│   ├── glide_path.py                # Annual allocation and liability schedules
-│   └── funding_probability.py       # Funding, shortfalls, sensitivity, scenarios
-├── examples/                        # Python examples for allocation and simulations
-├── tests/                           # Model and Streamlit workflow tests
-├── requirements.txt                 # Dashboard, research, and test dependencies
-└── pyproject.toml                   # Package metadata and optional dependencies
-```
-
-## Validation
-
-Run the test suite from the repository root:
-
-```powershell
-python -m pytest tests -q
-```
-
-Tests cover model behavior, allocation constraints, data validation, simulation cash-flow timing, seeded reproducibility, funding inputs, and dashboard navigation. Simulation tests verify that retained daily paths agree with annual results, chart values come from actual stored paths, and navigation and exports do not trigger new runs.
-
-## Assumptions and Limitations
-
-- This is an educational research tool. Simulated outcomes are not guaranteed and do not constitute investment advice.
-- Historical estimates depend on the chosen universe and sample period. Missing history can reduce the overlapping data available for analysis.
-- Portfolio projections exclude fees, taxes, inflation, currency conversion, and trading frictions. Daily rebalancing is a modeling assumption.
-- Monte Carlo assumes constant distribution parameters; block bootstrap can only resample behavior represented in the loaded history.
-- Funding comparisons use a separate asset-class model and baseline. Keep its payment timing and assumptions with any reported results.
-- To reproduce an exported result, retain the input data, settings, seed, and code revision. A seed alone cannot reproduce a result if the source data or implementation changes.
-
-## License and Acknowledgment
-
-Released under the [MIT License](LICENSE).
-
-The organization of this README was inspired by [Gavin Ho's Wharton Investment Competition README](https://github.com/gavin-ho1/wharton-investment-comp/blob/main/README.md). The descriptions and equations here document Mustang Wealth Lab's own implementation and supported workflows.
+The models are decision-support tools for educational competition use. Their projections are estimates, not promises of investment performance.

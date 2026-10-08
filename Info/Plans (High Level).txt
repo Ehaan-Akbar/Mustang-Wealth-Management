@@ -1,0 +1,16 @@
+Investing time periods: 2027-2031 (growth), 2031-2033 (stable-ETFs), 2033-2042(Cash flow matching, payments)
+
+[first steps]
+Data collection
+Desgining a systematic way of determining how stocks are chosen
+
+https://github.com/gavin-ho1/wharton-investment-comp/blob/main/README.md
+
+
+
+Black-Litterman Model - Expected returns and asset allocation; maximize sharpe ratio weights utilizing covariance, volatility for first part; use min volatility model for second part.
+CVar and Var Optimization - Downside risk management (Reducing potential losses)
+Block Bootstrap Simulation - Analyze thousands of different scenarios to evaluate portfolio performance. 
+Stress-Testing -  Evaluate how our portfolio would perform under specific scenarios like the 2008 financial crisis. 
+Liability-Driven Investing (Dynamic Glide Path) - Useful for protecting our assets as we get closer to the 2033 deadline. 
+Funding Probability and Sensitivity Analysis - Measure funding certainty and test how changing assumptions would affect the portfolio outcomes. 
