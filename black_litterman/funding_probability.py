@@ -202,6 +202,31 @@ def simulate_portfolio_path(
 
         portfolio_value += contribution
 
+        # ----------------------------------------------------
+        # Liability Payment (beginning of applicable year)
+        # ----------------------------------------------------
+
+        value_before_liability = portfolio_value
+
+        liability = liabilities.get(year, 0.0)
+
+        payment_made = min(
+            portfolio_value,
+            liability,
+        )
+
+        shortfall = max(
+            liability - portfolio_value,
+            0.0,
+        )
+
+        portfolio_value = max(
+            portfolio_value - liability,
+            0.0,
+        )
+
+        funded = shortfall == 0.0
+
         value_before_return = portfolio_value
 
         # ----------------------------------------------------
@@ -241,30 +266,6 @@ def simulate_portfolio_path(
 
         portfolio_value += investment_gain
 
-        value_before_liability = portfolio_value
-
-        # ----------------------------------------------------
-        # Liability Payment
-        # ----------------------------------------------------
-
-        liability = liabilities.get(year, 0.0)
-
-        payment_made = min(
-            portfolio_value,
-            liability,
-        )
-
-        shortfall = max(
-            liability - portfolio_value,
-            0.0,
-        )
-
-        portfolio_value = max(
-            portfolio_value - liability,
-            0.0,
-        )
-
-        funded = shortfall == 0.0
 
         rows.append(
             {
