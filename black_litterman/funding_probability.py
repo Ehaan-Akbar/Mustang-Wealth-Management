@@ -21,6 +21,7 @@ import pandas as pd
 from .glide_path import (
     END_YEAR,
     LIABILITIES,
+    LIABILITY_START_YEAR,
     START_YEAR,
     calculate_glide_path,
 )
@@ -141,6 +142,7 @@ def generate_asset_returns(
 def simulate_portfolio_path(
     initial_portfolio: float = INITIAL_PORTFOLIO,
     second_year_contribution: float = SECOND_YEAR_CONTRIBUTION,
+    facility_contribution_2033: float = 0.0,
     equity_return: float = EQUITY_RETURN,
     bond_return: float = BOND_RETURN,
     cash_return: float = CASH_RETURN,
@@ -166,9 +168,22 @@ def simulate_portfolio_path(
     if initial_portfolio < 0:
         raise ValueError("initial_portfolio cannot be negative.")
 
-    if second_year_contribution < 0:
+    if (
+        not np.isfinite(second_year_contribution)
+        or second_year_contribution < 0
+    ):
         raise ValueError(
-            "second_year_contribution cannot be negative."
+            "second_year_contribution must be finite "
+            "and non-negative."
+        )
+
+    if (
+        not np.isfinite(facility_contribution_2033)
+        or facility_contribution_2033 < 0
+    ):
+        raise ValueError(
+            "facility_contribution_2033 must be finite "
+            "and non-negative."
         )
 
     if rng is None:
@@ -226,6 +241,31 @@ def simulate_portfolio_path(
         )
 
         funded = shortfall == 0.0
+        # ----------------------------------------------------
+        # Facility Contribution (beginning of 2033)
+        # ----------------------------------------------------
+
+        facility_contribution_requested = 0.0
+        facility_contribution_made = 0.0
+        facility_contribution_shortfall = 0.0
+
+        if year == LIABILITY_START_YEAR:
+            facility_contribution_requested = (
+                facility_contribution_2033
+            )
+
+            facility_contribution_made = min(
+                portfolio_value,
+                facility_contribution_requested,
+            )
+
+            facility_contribution_shortfall = max(
+                facility_contribution_requested
+                - facility_contribution_made,
+                0.0,
+            )
+
+            portfolio_value -= facility_contribution_made
 
         value_before_return = portfolio_value
 
@@ -287,13 +327,18 @@ def simulate_portfolio_path(
                 "Equity Allocation": allocation.equity,
                 "Bond Allocation": allocation.bonds,
                 "Cash Allocation": allocation.cash,
+                "Facility Contribution Requested": facility_contribution_requested,
+                "Facility Contribution Made": facility_contribution_made,
+                "Facility Contribution Shortfall": facility_contribution_shortfall,
             }
         )
 
     results = pd.DataFrame(rows)
 
-    success = bool(results["Funded"].all())
-
+    success = bool(
+        results["Funded"].all()
+        and results["Facility Contribution Shortfall"].sum() <= 1e-9
+    )
     return success, results
 
 
@@ -332,7 +377,52 @@ def calculate_funding_probability(
 
     return successful_simulations / n_simulations
 
+def run_facility_contribution_sensitivity(
+    facility_contributions: Tuple[float, ...] = (
+        0.0,
+        50_000.0,
+        100_000.0,
+        150_000.0,
+        200_000.0,
+        250_000.0,
+        300_000.0,
+    ),
+    n_simulations: int = N_SIMULATIONS,
+    random_seed: int = RANDOM_SEED,
+) -> pd.DataFrame:
+    """
+    Estimate the probability of making a facility contribution
+    in 2033 while fully funding all ten operating payments.
+    """
 
+    if n_simulations <= 0:
+        raise ValueError(
+            "n_simulations must be greater than zero."
+        )
+
+    rows = []
+
+    for contribution in facility_contributions:
+        if not np.isfinite(contribution) or contribution < 0:
+            raise ValueError(
+                "Facility contributions must be finite "
+                "and non-negative."
+            )
+
+        probability = calculate_funding_probability(
+            n_simulations=n_simulations,
+            random_seed=random_seed,
+            facility_contribution_2033=float(contribution),
+        )
+
+        rows.append(
+            {
+                "Facility Contribution (2033)": contribution,
+                "Funding Probability (%)": probability * 100,
+            }
+        )
+
+    return pd.DataFrame(rows)
 # ============================================================
 # YEAR-BY-YEAR FUNDING PROBABILITY
 # ============================================================
