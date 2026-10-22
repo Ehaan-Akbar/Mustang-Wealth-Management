@@ -99,7 +99,7 @@ with st.sidebar:
         format="%.3f",
     )
     objective = st.selectbox("Portfolio objective", ["Maximum Sharpe", "Minimum volatility"])
-    stock_band = st.slider("Stock sleeve range (%)", 0, 100, (40, 60), 1)
+    stock_band = st.slider("Stock sleeve range (%)", 0, 100, (35, 40), 1)
 
 st.subheader("1 · Assets and market assumptions")
 asset_input = pd.DataFrame(

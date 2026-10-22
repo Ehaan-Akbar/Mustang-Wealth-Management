@@ -16,7 +16,7 @@ class MeanVarianceOptimizer:
         allow_short: bool = False,
         max_weight: Optional[float] = None,
         asset_types: Optional[Mapping[str, str]] = None,
-        stock_share_range: Tuple[float, float] = (0.40, 0.60),
+        stock_share_range: Tuple[float, float] = (0.35, 0.40),
         diversify: bool = True,
     ):
         self.tickers = list(expected_returns.index)
@@ -31,13 +31,12 @@ class MeanVarianceOptimizer:
         self.has_band = bool(self.is_stock.any() and (~self.is_stock).any())
         self.lo, self.hi = stock_share_range
 
-        inv_vol = 1.0 / np.sqrt(np.diag(self.sigma))
-        if self.has_band:
-            mid = (self.lo + self.hi) / 2
-            s, e = self.is_stock, ~self.is_stock
-            self.target = np.where(s, mid * inv_vol / inv_vol[s].sum(), (1 - mid) * inv_vol / inv_vol[e].sum())
-        else:
-            self.target = inv_vol / inv_vol.sum()
+        # Equal share within each sleeve; the penalty only judges the spread
+        # inside a sleeve, so the stock/ETF split itself is left to risk/return.
+        s, e = self.is_stock, ~self.is_stock
+        self.share = np.where(s, 1.0 / max(s.sum(), 1), 1.0 / max(e.sum(), 1))
+        mid = (self.lo + self.hi) / 2 if self.has_band else 1.0
+        self.target = self.share * np.where(s, mid, 1 - mid)
 
         avg_var = float(np.trace(self.sigma) / self.n)
         self.lam = avg_var / float(self.target @ self.target) if diversify else 0.0
@@ -50,15 +49,19 @@ class MeanVarianceOptimizer:
         s = float(w[self.is_stock].sum())
         return max(s - self.lo, 1e-12), max(self.hi - s, 1e-12)
 
+    def _spread(self, w):
+        s = float(w[self.is_stock].sum())
+        return w - self.share * np.where(self.is_stock, s, float(w.sum()) - s)
+
     def effective_variance(self, w: np.ndarray) -> float:
-        v = w @ self.sigma @ w + self.lam * np.sum((w - self.target) ** 2)
+        v = w @ self.sigma @ w + self.lam * np.sum(self._spread(w) ** 2)
         if self.has_band:
             a, b = self._gaps(w)
             v -= self.kappa * (np.log(a) + np.log(b))
         return float(v)
 
     def _effective_variance_grad(self, w: np.ndarray) -> np.ndarray:
-        g = 2 * self.sigma @ w + 2 * self.lam * (w - self.target)
+        g = 2 * self.sigma @ w + 2 * self.lam * self._spread(w)
         if self.has_band:
             a, b = self._gaps(w)
             g = g + self.kappa * (1 / b - 1 / a) * self.is_stock

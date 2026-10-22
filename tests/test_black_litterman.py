@@ -104,4 +104,14 @@ def test_every_asset_held_and_stock_band(small_cov, market_weights):
     opt = MeanVarianceOptimizer(mu, cov, asset_types={"C": "ETF"})
     for w in (opt.max_sharpe(), opt.min_volatility()):
         assert (w > 1e-3).all()
-        assert 0.40 < opt.sleeve_weights(w)["Stocks"] < 0.60
+        assert 0.35 < opt.sleeve_weights(w)["Stocks"] < 0.40
+
+
+def test_gradient_matches_numeric(small_cov, market_weights):
+    mu, cov = BlackLittermanModel(small_cov, market_weights).posterior()
+    opt = MeanVarianceOptimizer(mu, cov, asset_types={"C": "ETF"})
+    w = np.array([0.2, 0.17, 0.63])
+    eps = 1e-7
+    num = [(opt.effective_variance(w + eps * np.eye(3)[i]) - opt.effective_variance(w - eps * np.eye(3)[i])) / (2 * eps)
+           for i in range(3)]
+    np.testing.assert_allclose(opt._effective_variance_grad(w), num, rtol=1e-5)
