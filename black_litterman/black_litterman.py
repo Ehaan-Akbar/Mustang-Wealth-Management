@@ -21,6 +21,9 @@ where:
     P      = view "pick" matrix (k x n)
     Q      = view return vector (k,)
     Omega  = view uncertainty covariance matrix (k x k)
+
+All returns produced by this model are EXCESS returns (over the risk-free
+rate), because pi = delta * Sigma @ w is an excess return.
 """
 
 from dataclasses import dataclass, field
@@ -28,6 +31,41 @@ from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
+import yfinance as yf
+
+
+# ======================================================================
+# Data helpers (imported by the main script)
+# ======================================================================
+def download_prices(tickers, start="2018-01-01", end=None):
+    """Download adjusted daily close prices. Returns a DataFrame with one
+    column per ticker."""
+    data = yf.download(
+        list(tickers),
+        start=start,
+        end=end,
+        auto_adjust=True,
+        progress=False,
+        threads=False,
+    )
+
+    if data.empty:
+        raise RuntimeError(
+            "yfinance returned no data. Check your connection or rate limits."
+        )
+
+    # Multiple tickers produce MultiIndex columns: (field, ticker).
+    if isinstance(data.columns, pd.MultiIndex):
+        prices = data["Close"]
+    else:
+        prices = data[["Close"]]
+
+    return prices
+
+
+def compute_returns(prices):
+    """Simple daily returns from a price DataFrame."""
+    return prices.pct_change().iloc[1:]
 
 
 @dataclass
