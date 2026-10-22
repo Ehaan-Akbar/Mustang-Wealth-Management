@@ -38,9 +38,11 @@ HISTORICAL_START = "2018-01-01"
 TICKERS = [
     "MRK", "LMT", "JNJ", "KO", "ABT", "SO", "CSCO",
     "FLO", "AS", "MDLZ", "SCHL", "TSM", "NVDA", "NWS",
-    "ADBE", "V", "LLY", "GOOG", "ASML", "DIS", "NTDOY",
-    "FIG", "META", "AMZN", "ABNB", "DAL", "TER",
-    "VXUS", "SCHD", "NTES", "CP", "VOO",
+    "ADBE", "V", "LLY", "GOOG", "ASML", "DIS", "NTDOY", 
+    "META", "AMZN", "ABNB", "DAL", "TER",
+    "VXUS", "SCHD", "NTES", "CP", "VOO", "SCHG",
+    "USMV", "QUAL", "VTV", "VEA", "VEU", "XLU", "XLP", 
+    "ESGD", "ESGV"
 ]
 
 # Black-Litterman parameters.
@@ -49,8 +51,8 @@ TAU = 0.05
 RISK_FREE_RATE = 0.02
 
 # Minimum percentage invested in every asset.
-MIN_WEIGHT = 0.015  # at least 1.5% in each asset
-MAX_WEIGHT = 0.15   # at most 15% in each asset
+MIN_WEIGHT = 0.01  # at least 1.5% in each asset
+MAX_WEIGHT = 0.10   # at most 10% in each asset
 
 # Illustrative investor views (TOTAL annual returns, as you would state them).
 # Change these tickers and assumptions to reflect your actual views.
