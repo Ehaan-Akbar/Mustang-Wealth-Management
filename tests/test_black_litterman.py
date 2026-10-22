@@ -86,3 +86,22 @@ def test_min_volatility_has_lowest_variance(small_cov, market_weights):
     max_sharpe_variance = max_sharpe_w.values @ posterior_cov.values @ max_sharpe_w.values
 
     assert min_vol_variance <= max_sharpe_variance + 1e-8
+
+
+def test_deflation_keeps_market_return(small_cov, market_weights):
+    model = BlackLittermanModel(small_cov, market_weights)
+    model.add_absolute_view("A", expected_return=0.30, confidence=0.9)
+    raw, _ = model.posterior()
+    deflated, _ = model.posterior(deflate=True)
+    assert 0 < model.deflation_shrinkage < 1
+    assert np.isclose(market_weights @ raw, market_weights @ deflated)
+    assert deflated["A"] < raw["A"]
+
+
+def test_every_asset_held_and_stock_band(small_cov, market_weights):
+    model = BlackLittermanModel(small_cov, market_weights)
+    mu, cov = model.posterior(deflate=True)
+    opt = MeanVarianceOptimizer(mu, cov, asset_types={"C": "ETF"})
+    for w in (opt.max_sharpe(), opt.min_volatility()):
+        assert (w > 1e-3).all()
+        assert 0.40 < opt.sleeve_weights(w)["Stocks"] < 0.60

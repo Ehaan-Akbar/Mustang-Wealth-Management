@@ -99,11 +99,15 @@ with st.sidebar:
         format="%.3f",
     )
     objective = st.selectbox("Portfolio objective", ["Maximum Sharpe", "Minimum volatility"])
-    max_weight_pct = st.slider("Maximum position", 10, 100, 100, 5)
+    stock_band = st.slider("Stock sleeve range (%)", 0, 100, (40, 60), 1)
 
 st.subheader("1 · Assets and market assumptions")
 asset_input = pd.DataFrame(
-    {"Ticker": list(DEFAULT_MARKET_CAPS), "Market cap ($B)": list(DEFAULT_MARKET_CAPS.values())}
+    {
+        "Ticker": list(DEFAULT_MARKET_CAPS),
+        "Type": ["Stock"] * len(DEFAULT_MARKET_CAPS),
+        "Market cap ($B)": list(DEFAULT_MARKET_CAPS.values()),
+    }
 )
 asset_table = st.data_editor(
     asset_input,
@@ -112,6 +116,7 @@ asset_table = st.data_editor(
     width="stretch",
     column_config={
         "Ticker": st.column_config.TextColumn(required=True),
+        "Type": st.column_config.SelectboxColumn(options=["Stock", "ETF"], required=True),
         "Market cap ($B)": st.column_config.NumberColumn(min_value=0.01, required=True),
     },
 )
@@ -123,6 +128,7 @@ tickers = tuple(clean_assets["Ticker"].tolist())
 market_caps: Dict[str, float] = dict(
     zip(clean_assets["Ticker"], clean_assets["Market cap ($B)"].astype(float))
 )
+asset_types: Dict[str, str] = dict(zip(clean_assets["Ticker"], clean_assets["Type"]))
 
 st.subheader("2 · Investor views")
 st.caption("Add absolute return views or relative outperformance views. Leave the table empty to use the market prior.")
@@ -212,12 +218,13 @@ if run:
                     row["Asset"], float(row["Expected return"]), float(row["Confidence"])
                 )
 
-        posterior_returns, posterior_covariance = model.posterior()
+        posterior_returns, posterior_covariance = model.posterior(deflate=True)
         optimizer = MeanVarianceOptimizer(
             posterior_returns,
             posterior_covariance,
             risk_free_rate=float(risk_free_rate),
-            max_weight=float(max_weight_pct) / 100,
+            asset_types=asset_types,
+            stock_share_range=(stock_band[0] / 100, stock_band[1] / 100),
         )
         weights = optimizer.max_sharpe() if objective == "Maximum Sharpe" else optimizer.min_volatility()
         expected_return, volatility, sharpe = optimizer.performance(weights)
@@ -251,6 +258,11 @@ if run:
             allocation = weights.rename("Weight").to_frame()
             st.bar_chart(allocation)
             st.dataframe(allocation.style.format("{:.2%}"), width="stretch")
+            if optimizer.has_band:
+                sleeves = optimizer.sleeve_weights(weights)
+                s1, s2 = st.columns(2)
+                s1.metric("Stocks", f"{sleeves['Stocks']:.1%}")
+                s2.metric("ETFs", f"{sleeves['ETFs']:.1%}")
 
         with outlook_tab:
             percentiles = result.year_start_values.quantile([0.05, 0.50, 0.95]).T
@@ -269,7 +281,7 @@ if run:
                 st.markdown("**Prior vs. posterior returns**")
                 st.dataframe(
                     model.summary().style.format(
-                        {"market_weight": "{:.2%}", "prior_return": "{:.2%}", "posterior_return": "{:.2%}", "delta": "{:+.2%}"}
+                        {"market_weight": "{:.2%}", "prior_return": "{:.2%}", "posterior_return": "{:.2%}", "deflated_return": "{:.2%}", "delta": "{:+.2%}"}
                     ),
                     width="stretch",
                 )

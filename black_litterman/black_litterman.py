@@ -184,8 +184,14 @@ class BlackLittermanModel:
     # ------------------------------------------------------------------
     # Posterior computation
     # ------------------------------------------------------------------
-    def posterior(self):
+    def posterior(self, deflate: bool = False):
         """
+        Parameters
+        ----------
+        deflate : bool
+            If True, apply Bayes-Stein deflation (see `deflate_returns`) to
+            the posterior returns before returning them.
+
         Returns
         -------
         posterior_returns : pd.Series
@@ -201,27 +207,46 @@ class BlackLittermanModel:
             # No views: posterior collapses to the prior.
             posterior_returns = self.pi.copy()
             posterior_cov = self.sigma.copy()
-            return posterior_returns, posterior_cov
+        else:
+            P, Q, confidences = self._build_view_matrices()
+            omega = self._build_omega(P, confidences)
+            omega_inv = np.linalg.inv(omega)
 
-        P, Q, confidences = self._build_view_matrices()
-        omega = self._build_omega(P, confidences)
-        omega_inv = np.linalg.inv(omega)
+            M = np.linalg.inv(tau_sigma_inv + P.T @ omega_inv @ P)
+            combined_mean = M @ (tau_sigma_inv @ self.pi.values + P.T @ omega_inv @ Q)
 
-        M = np.linalg.inv(tau_sigma_inv + P.T @ omega_inv @ P)
-        combined_mean = M @ (tau_sigma_inv @ self.pi.values + P.T @ omega_inv @ Q)
+            posterior_returns = pd.Series(combined_mean, index=self.tickers, name="posterior_return")
+            posterior_cov = pd.DataFrame(sigma + M, index=self.tickers, columns=self.tickers)
 
-        posterior_returns = pd.Series(combined_mean, index=self.tickers, name="posterior_return")
-        posterior_cov = pd.DataFrame(sigma + M, index=self.tickers, columns=self.tickers)
+        if deflate:
+            posterior_returns = self.deflate_returns(posterior_returns)
         return posterior_returns, posterior_cov
 
+    def deflate_returns(self, expected_returns: pd.Series) -> pd.Series:
+        """Bayes-Stein shrinkage toward a market-Sharpe-per-volatility target."""
+        mu = expected_returns.reindex(self.tickers).values
+        vols = np.sqrt(np.diag(self.sigma.values))
+        w_mkt = self.market_weights.values
+        mu_0 = float(w_mkt @ mu) / float(w_mkt @ vols) * vols
+
+        ex = mu - mu_0
+        d = float(ex @ np.linalg.inv(self.sigma.values) @ ex)
+        shrinkage = (self.n + 2) / ((self.n + 2) + d / self.tau)
+
+        deflated = (1.0 - shrinkage) * mu + shrinkage * mu_0
+        self.deflation_shrinkage = shrinkage
+        return pd.Series(deflated, index=self.tickers, name="deflated_return")
+
     def summary(self) -> pd.DataFrame:
-        """Convenience table comparing prior vs. posterior expected returns."""
+        """Convenience table comparing prior, posterior and deflated returns."""
         posterior_returns, _ = self.posterior()
+        deflated_returns = self.deflate_returns(posterior_returns)
         df = pd.DataFrame(
             {
                 "market_weight": self.market_weights,
                 "prior_return": self.pi,
                 "posterior_return": posterior_returns,
+                "deflated_return": deflated_returns,
                 "delta": posterior_returns - self.pi,
             }
         )
